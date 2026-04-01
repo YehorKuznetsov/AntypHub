@@ -42,6 +42,35 @@ jobs:
           releaseBody: 'See the assets to download and install this version.'
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
-          updaterJsonPreferNsis: true
-          args: --verbose
+
+      - name: Upload updater artifacts
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          BUNDLE="src-tauri/target/release/bundle"
+
+          NSIS_ZIP="${BUNDLE}/nsis/AntypHub_${VERSION}_x64-setup.nsis.zip"
+          NSIS_SIG="${NSIS_ZIP}.sig"
+
+          gh release upload "v${VERSION}" "${NSIS_ZIP}" "${NSIS_SIG}" --clobber
+
+          SIG_CONTENT=$(cat "${NSIS_SIG}")
+          PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          cat > latest.json << ENDJSON
+          {
+            "version": "${VERSION}",
+            "notes": "Antyp Hub v${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${SIG_CONTENT}",
+                "url": "https://github.com/YehorKuznetsov/AntypHub/releases/download/v${VERSION}/AntypHub_${VERSION}_x64-setup.nsis.zip"
+              }
+            }
+          }
+          ENDJSON
+
+          gh release upload "v${VERSION}" latest.json --clobber
