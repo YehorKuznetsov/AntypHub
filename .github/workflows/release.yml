@@ -63,13 +63,8 @@ jobs:
           $zipPath = Join-Path $nsisExe.DirectoryName $zipName
           Compress-Archive -Path $nsisExe.FullName -DestinationPath $zipPath -Force
 
-          # Write key to file and sign with minisign via tauri signer
-          $keyPath = "$env:RUNNER_TEMP\signing.key"
-          [System.IO.File]::WriteAllText($keyPath, $env:TAURI_SIGNING_PRIVATE_KEY)
-
-          # Use cargo to install tauri-cli and sign
-          cargo install tauri-cli --version "^2" 2>$null
-          cargo tauri signer sign --private-key-path $keyPath --password "" $zipPath
+          # Sign using npx tauri signer with inline key
+          npx tauri signer sign --private-key $env:TAURI_SIGNING_PRIVATE_KEY --password "" $zipPath
 
           $sigPath = "$zipPath.sig"
           if (-not (Test-Path $sigPath)) {
