@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 interface UpdateInfo {
     version: string;
-    body: string | null;
+    body: string | undefined;
 }
 
 export default function UpdateModal() {
