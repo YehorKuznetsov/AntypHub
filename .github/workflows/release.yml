@@ -40,7 +40,7 @@ jobs:
           $lines = (Get-Content $keyPath).Count
           $size = (Get-Item $keyPath).Length
           Write-Host "Key written: $size bytes, $lines lines"
-          Write-Host "TAURI_SIGNING_PRIVATE_KEY_PATH=$keyPath" >> $env:GITHUB_ENV
+          "TAURI_SIGNING_PRIVATE_KEY_PATH=$keyPath" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
 
       - name: Build Tauri app
         shell: pwsh
@@ -49,6 +49,7 @@ jobs:
         run: |
           Write-Host "Key path: $env:TAURI_SIGNING_PRIVATE_KEY_PATH"
           Write-Host "Key exists: $(Test-Path $env:TAURI_SIGNING_PRIVATE_KEY_PATH)"
+          Get-Content $env:TAURI_SIGNING_PRIVATE_KEY_PATH | Select-Object -First 1
           npx tauri build
 
       - name: List bundle contents
