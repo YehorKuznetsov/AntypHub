@@ -30,8 +30,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and sign with tauri-action
-        id: tauri
+      - name: Build with tauri-action
         uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,40 +42,42 @@ jobs:
           releaseBody: 'See the assets to download and install this version.'
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
-          updaterJsonPreferNsis: true
 
-      - name: Upload updater JSON manually if missing
+      - name: Install minisign and create updater artifacts
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           $version = (Get-Content src-tauri\tauri.conf.json | ConvertFrom-Json).version
-
-          # Check if latest.json already uploaded by tauri-action
-          $existing = gh release view "v$version" --json assets --jq '.assets[].name' 2>$null
-          if ($existing -match 'latest.json') {
-            Write-Host "latest.json already exists in release"
-            exit 0
-          }
-
-          # Re-run tauri build just for signing artifacts
-          Write-Host "Re-building to get .sig files..."
-          npx tauri build
-
           $bundle = "src-tauri\target\release\bundle"
-          $nsisZip = Get-ChildItem "$bundle\nsis\*.nsis.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $nsisZipSig = Get-ChildItem "$bundle\nsis\*.nsis.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $nsisExe = Get-ChildItem "$bundle\nsis\*-setup.exe" | Select-Object -First 1
 
-          if (-not $nsisZipSig -or -not $nsisZip) {
-            Write-Host "Still no .sig files after rebuild"
-            Get-ChildItem -Recurse $bundle -File | ForEach-Object { Write-Host $_.FullName }
+          if (-not $nsisExe) {
+            Write-Host "ERROR: No setup.exe found"
             exit 1
           }
 
-          $sigContent = (Get-Content $nsisZipSig.FullName -Raw).Trim()
+          # Create nsis zip
+          $zipName = $nsisExe.BaseName + ".nsis.zip"
+          $zipPath = Join-Path $nsisExe.DirectoryName $zipName
+          Compress-Archive -Path $nsisExe.FullName -DestinationPath $zipPath -Force
+
+          # Write key to file and sign with minisign via tauri signer
+          $keyPath = "$env:RUNNER_TEMP\signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $env:TAURI_SIGNING_PRIVATE_KEY)
+
+          # Use cargo to install tauri-cli and sign
+          cargo install tauri-cli --version "^2" 2>$null
+          cargo tauri signer sign --private-key-path $keyPath --password "" $zipPath
+
+          $sigPath = "$zipPath.sig"
+          if (-not (Test-Path $sigPath)) {
+            Write-Host "ERROR: Signing failed, no .sig file"
+            exit 1
+          }
+
+          $sigContent = (Get-Content $sigPath -Raw).Trim()
           $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
           $json = @{
@@ -86,11 +87,12 @@ jobs:
             platforms = @{
               "windows-x86_64" = @{
                 signature = $sigContent
-                url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$($nsisZip.Name)"
+                url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$zipName"
               }
             }
           } | ConvertTo-Json -Depth 4
 
           Set-Content -Path latest.json -Value $json -Encoding utf8NoBOM
-          gh release upload "v$version" $nsisZip.FullName $nsisZipSig.FullName latest.json --clobber
-          Write-Host "Uploaded latest.json, nsis.zip and sig"
+
+          gh release upload "v$version" $zipPath $sigPath latest.json --clobber
+          Write-Host "Uploaded: $zipName, sig, and latest.json"
