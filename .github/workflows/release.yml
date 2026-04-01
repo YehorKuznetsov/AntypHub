@@ -10,9 +10,6 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -33,22 +30,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Debug signing key
-        shell: pwsh
-        run: |
-          Write-Host "Key length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)"
-          Write-Host "Starts with: $($env:TAURI_SIGNING_PRIVATE_KEY.Substring(0, [Math]::Min(30, $env:TAURI_SIGNING_PRIVATE_KEY.Length)))"
-          Write-Host "PASSWORD var set: $($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ne $null)"
-          Write-Host "PASSWORD length: $($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD.Length)"
-
-      - name: Build Tauri app
-        run: npx tauri build
+      - name: Build and sign with tauri-action
+        uses: tauri-apps/tauri-action@v0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
       - name: List bundle contents
         shell: pwsh
         run: Get-ChildItem -Recurse src-tauri\target\release\bundle -File | ForEach-Object { Write-Host $_.FullName }
 
-      - name: Create release and upload artifacts
+      - name: Create release with updater
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
