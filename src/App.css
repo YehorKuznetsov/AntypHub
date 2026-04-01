@@ -1,0 +1,226 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+}
+
+.page {
+    padding: 24px;
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+
+h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+input {
+    padding: 10px 12px;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    border-color: #4a9eff;
+}
+
+button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #4a9eff;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #3a8eef;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.error {
+    color: #ff4a4a;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.muted {
+    color: #666;
+    font-size: 14px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    margin-bottom: 0;
+}
+
+.logout-btn {
+    background: transparent;
+    color: #888;
+    font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid #2a2a2a;
+}
+
+.logout-btn:hover {
+    color: #e0e0e0;
+    border-color: #444;
+    background: transparent;
+}
+
+.card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.link-box {
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+}
+
+.link-box code {
+    font-size: 12px;
+    color: #4a9eff;
+    word-break: break-all;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.actions button {
+    flex: 1;
+    font-size: 13px;
+    padding: 8px;
+}
+
+.refresh-btn {
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    color: #888;
+}
+
+.refresh-btn:hover {
+    color: #e0e0e0;
+    border-color: #444;
+    background: transparent;
+}
+
+.update-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.update-modal {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+}
+
+.update-modal h2 {
+    font-size: 18px;
+    color: #e0e0e0;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 8px;
+}
+
+.update-version {
+    color: #4a9eff;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.update-body {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.update-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+}
+
+.update-progress {
+    margin-top: 12px;
+}
+
+.progress-bar {
+    background: #2a2a2a;
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: #4a9eff;
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s;
+}
+
+.progress-text {
+    color: #888;
+    font-size: 13px;
+    margin-top: 8px;
+}
