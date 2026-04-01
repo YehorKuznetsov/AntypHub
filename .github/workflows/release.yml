@@ -51,12 +51,20 @@ jobs:
           VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
           BUNDLE="src-tauri/target/release/bundle"
 
-          NSIS_ZIP="${BUNDLE}/nsis/AntypHub_${VERSION}_x64-setup.nsis.zip"
-          NSIS_SIG="${NSIS_ZIP}.sig"
+          echo "=== Listing bundle contents ==="
+          find "${BUNDLE}" -type f | sort
 
-          gh release upload "v${VERSION}" "${NSIS_ZIP}" "${NSIS_SIG}" --clobber
+          # Find the sig file for nsis exe
+          NSIS_SIG=$(find "${BUNDLE}/nsis" -name "*.exe.sig" | head -1)
+          NSIS_EXE=$(find "${BUNDLE}/nsis" -name "*-setup.exe" | head -1)
+
+          if [ -z "$NSIS_SIG" ]; then
+            echo "ERROR: No .sig file found. Signing may have failed."
+            exit 1
+          fi
 
           SIG_CONTENT=$(cat "${NSIS_SIG}")
+          NSIS_FILENAME=$(basename "${NSIS_EXE}")
           PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
           cat > latest.json << ENDJSON
@@ -67,7 +75,7 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "${SIG_CONTENT}",
-                "url": "https://github.com/YehorKuznetsov/AntypHub/releases/download/v${VERSION}/AntypHub_${VERSION}_x64-setup.nsis.zip"
+                "url": "https://github.com/YehorKuznetsov/AntypHub/releases/download/v${VERSION}/${NSIS_FILENAME}"
               }
             }
           }
