@@ -58,15 +58,10 @@ jobs:
             exit 1
           }
 
-          # Create nsis zip
-          $zipName = $nsisExe.BaseName + ".nsis.zip"
-          $zipPath = Join-Path $nsisExe.DirectoryName $zipName
-          Compress-Archive -Path $nsisExe.FullName -DestinationPath $zipPath -Force
+          # Sign the exe directly
+          npx tauri signer sign --private-key $env:TAURI_SIGNING_PRIVATE_KEY --password "" $nsisExe.FullName
 
-          # Sign using npx tauri signer with inline key
-          npx tauri signer sign --private-key $env:TAURI_SIGNING_PRIVATE_KEY --password "" $zipPath
-
-          $sigPath = "$zipPath.sig"
+          $sigPath = "$($nsisExe.FullName).sig"
           if (-not (Test-Path $sigPath)) {
             Write-Host "ERROR: Signing failed, no .sig file"
             exit 1
@@ -74,6 +69,7 @@ jobs:
 
           $sigContent = (Get-Content $sigPath -Raw).Trim()
           $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $exeName = $nsisExe.Name
 
           $json = @{
             version = $version
@@ -82,12 +78,12 @@ jobs:
             platforms = @{
               "windows-x86_64" = @{
                 signature = $sigContent
-                url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$zipName"
+                url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$exeName"
               }
             }
           } | ConvertTo-Json -Depth 4
 
           Set-Content -Path latest.json -Value $json -Encoding utf8NoBOM
 
-          gh release upload "v$version" $zipPath $sigPath latest.json --clobber
-          Write-Host "Uploaded: $zipName, sig, and latest.json"
+          gh release upload "v$version" latest.json --clobber
+          Write-Host "Uploaded latest.json with direct exe URL"

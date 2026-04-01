@@ -53,7 +53,7 @@ export default function UpdateModal() {
 
             await relaunch();
         } catch (err: any) {
-            setError(err.message || 'Помилка оновлення');
+            setError(String(err?.message || err || 'Помилка оновлення'));
             setDownloading(false);
         }
     }
