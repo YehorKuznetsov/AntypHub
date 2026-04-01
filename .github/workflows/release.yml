@@ -30,13 +30,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Write signing key
+        shell: pwsh
+        env:
+          SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          $keyPath = "$env:RUNNER_TEMP\tauri-signing.key"
+          [System.IO.File]::WriteAllText($keyPath, $env:SIGNING_KEY, [System.Text.Encoding]::UTF8)
+          $lines = (Get-Content $keyPath).Count
+          $size = (Get-Item $keyPath).Length
+          Write-Host "Key written: $size bytes, $lines lines"
+          Write-Host "TAURI_SIGNING_PRIVATE_KEY_PATH=$keyPath" >> $env:GITHUB_ENV
+
       - name: Build Tauri app
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
-          Write-Host "Key env length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)"
+          Write-Host "Key path: $env:TAURI_SIGNING_PRIVATE_KEY_PATH"
+          Write-Host "Key exists: $(Test-Path $env:TAURI_SIGNING_PRIVATE_KEY_PATH)"
           npx tauri build
 
       - name: List bundle contents
