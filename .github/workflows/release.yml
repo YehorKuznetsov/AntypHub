@@ -10,6 +10,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -30,27 +33,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Write signing key
+      - name: Debug signing key
         shell: pwsh
-        env:
-          SIGNING_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          $keyPath = "$env:RUNNER_TEMP\tauri-signing.key"
-          [System.IO.File]::WriteAllText($keyPath, $env:SIGNING_KEY, [System.Text.Encoding]::UTF8)
-          $lines = (Get-Content $keyPath).Count
-          $size = (Get-Item $keyPath).Length
-          Write-Host "Key written: $size bytes, $lines lines"
-          "TAURI_SIGNING_PRIVATE_KEY_PATH=$keyPath" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+          Write-Host "Key length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)"
+          Write-Host "Starts with: $($env:TAURI_SIGNING_PRIVATE_KEY.Substring(0, [Math]::Min(30, $env:TAURI_SIGNING_PRIVATE_KEY.Length)))"
+          Write-Host "PASSWORD var set: $($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ne $null)"
+          Write-Host "PASSWORD length: $($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD.Length)"
 
       - name: Build Tauri app
-        shell: pwsh
-        env:
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-        run: |
-          Write-Host "Key path: $env:TAURI_SIGNING_PRIVATE_KEY_PATH"
-          Write-Host "Key exists: $(Test-Path $env:TAURI_SIGNING_PRIVATE_KEY_PATH)"
-          Get-Content $env:TAURI_SIGNING_PRIVATE_KEY_PATH | Select-Object -First 1
-          npx tauri build
+        run: npx tauri build
 
       - name: List bundle contents
         shell: pwsh
