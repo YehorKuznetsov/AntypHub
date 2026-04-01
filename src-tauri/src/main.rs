@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    antyphub_tmp_lib::run()
+    antyp_hub_lib::run()
 }
