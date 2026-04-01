@@ -31,57 +31,66 @@ jobs:
         run: npm ci
 
       - name: Build and sign with tauri-action
+        id: tauri
         uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Antyp Hub v__VERSION__'
+          releaseBody: 'See the assets to download and install this version.'
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
 
-      - name: List bundle contents
-        shell: pwsh
-        run: Get-ChildItem -Recurse src-tauri\target\release\bundle -File | ForEach-Object { Write-Host $_.FullName }
-
-      - name: Create release with updater
+      - name: Upload updater JSON manually if missing
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           $version = (Get-Content src-tauri\tauri.conf.json | ConvertFrom-Json).version
-          $bundle = "src-tauri\target\release\bundle"
 
-          $nsisExe = Get-ChildItem "$bundle\nsis\*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $nsisZip = Get-ChildItem "$bundle\nsis\*.nsis.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $nsisZipSig = Get-ChildItem "$bundle\nsis\*.nsis.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $msi = Get-ChildItem "$bundle\msi\*.msi" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch '\.(zip|sig)$' } | Select-Object -First 1
-
-          $assets = @()
-          if ($nsisExe) { $assets += $nsisExe.FullName }
-          if ($msi) { $assets += $msi.FullName }
-
-          if ($nsisZipSig -and $nsisZip) {
-            $sigContent = (Get-Content $nsisZipSig.FullName -Raw).Trim()
-            $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-
-            $json = @{
-              version = $version
-              notes = "Antyp Hub v$version"
-              pub_date = $pubDate
-              platforms = @{
-                "windows-x86_64" = @{
-                  signature = $sigContent
-                  url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$($nsisZip.Name)"
-                }
-              }
-            } | ConvertTo-Json -Depth 4
-
-            Set-Content -Path latest.json -Value $json -Encoding utf8NoBOM
-            $assets += $nsisZip.FullName
-            $assets += $nsisZipSig.FullName
-            $assets += "latest.json"
-            Write-Host "Updater JSON created"
-          } else {
-            Write-Host "WARNING: No .nsis.zip.sig found - updater JSON skipped"
+          # Check if latest.json already uploaded by tauri-action
+          $existing = gh release view "v$version" --json assets --jq '.assets[].name' 2>$null
+          if ($existing -match 'latest.json') {
+            Write-Host "latest.json already exists in release"
+            exit 0
           }
 
-          $assetArgs = $assets | ForEach-Object { "`"$_`"" }
-          Invoke-Expression "gh release create `"v$version`" --title `"Antyp Hub v$version`" --notes `"See the assets to download and install this version.`" $($assetArgs -join ' ')"
+          # Re-run tauri build just for signing artifacts
+          Write-Host "Re-building to get .sig files..."
+          npx tauri build
+
+          $bundle = "src-tauri\target\release\bundle"
+          $nsisZip = Get-ChildItem "$bundle\nsis\*.nsis.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $nsisZipSig = Get-ChildItem "$bundle\nsis\*.nsis.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $nsisZipSig -or -not $nsisZip) {
+            Write-Host "Still no .sig files after rebuild"
+            Get-ChildItem -Recurse $bundle -File | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+
+          $sigContent = (Get-Content $nsisZipSig.FullName -Raw).Trim()
+          $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+          $json = @{
+            version = $version
+            notes = "Antyp Hub v$version"
+            pub_date = $pubDate
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $sigContent
+                url = "https://github.com/YehorKuznetsov/AntypHub/releases/download/v$version/$($nsisZip.Name)"
+              }
+            }
+          } | ConvertTo-Json -Depth 4
+
+          Set-Content -Path latest.json -Value $json -Encoding utf8NoBOM
+          gh release upload "v$version" $nsisZip.FullName $nsisZipSig.FullName latest.json --clobber
+          Write-Host "Uploaded latest.json, nsis.zip and sig"
