@@ -1,22 +1,36 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { login } from './api';
+import { getRecentEmails, saveRecentEmail } from './recentEmails';
 
 interface Props {
     onLogin: (token: string) => void;
 }
 
 export default function LoginPage({ onLogin }: Props) {
+    const [recentEmails, setRecentEmails] = useState<string[]>([]);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const passwordRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const list = getRecentEmails();
+        setRecentEmails(list);
+        if (list.length > 0) {
+            setEmail(list[0]);
+            passwordRef.current?.focus();
+        }
+    }, []);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
         setLoading(true);
         try {
-            const token = await login(email.trim(), password);
+            const trimmed = email.trim();
+            const token = await login(trimmed, password);
+            saveRecentEmail(trimmed);
             onLogin(token);
         } catch (err: any) {
             setError(err.message);
@@ -32,12 +46,20 @@ export default function LoginPage({ onLogin }: Props) {
                 <input
                     type="email"
                     placeholder="Email"
+                    list="antyp-hub-recent-emails"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    autoFocus
+                    autoFocus={recentEmails.length === 0}
                 />
+                {recentEmails.length > 0 && (
+                    <datalist id="antyp-hub-recent-emails">
+                        {recentEmails.map((e) => <option key={e} value={e} />)}
+                    </datalist>
+                )}
                 <input
+                    ref={passwordRef}
                     type="password"
                     placeholder="Пароль"
                     value={password}
