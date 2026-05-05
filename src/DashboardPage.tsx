@@ -5,9 +5,11 @@ import { getCurrentGateLink } from './api';
 interface Props {
     token: string;
     onLogout: () => void;
+    onAuthExpired: () => Promise<boolean>;
+    onOpenSettings: () => void;
 }
 
-export default function DashboardPage({ token, onLogout }: Props) {
+export default function DashboardPage({ token, onLogout, onAuthExpired, onOpenSettings }: Props) {
     const [link, setLink] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -21,14 +23,14 @@ export default function DashboardPage({ token, onLogout }: Props) {
             setLink(result);
         } catch (err: any) {
             if (err.message === 'unauthorized') {
-                onLogout();
+                await onAuthExpired();
                 return;
             }
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [token, onLogout]);
+    }, [token, onAuthExpired]);
 
     useEffect(() => {
         fetchLink();
@@ -50,7 +52,10 @@ export default function DashboardPage({ token, onLogout }: Props) {
         <div className="page">
             <div className="header">
                 <h1>Antyp Hub</h1>
-                <button className="logout-btn" onClick={onLogout}>Вийти</button>
+                <div className="header-actions">
+                    <button className="logout-btn" onClick={onOpenSettings} title="Налаштування" aria-label="Налаштування">⚙</button>
+                    <button className="logout-btn" onClick={onLogout}>Вийти</button>
+                </div>
             </div>
 
             <div className="card">

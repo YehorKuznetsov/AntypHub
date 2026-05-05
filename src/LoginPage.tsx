@@ -3,7 +3,7 @@ import { login } from './api';
 import { getRecentEmails, saveRecentEmail } from './recentEmails';
 
 interface Props {
-    onLogin: (token: string) => void;
+    onLogin: (token: string, creds: { email: string; password: string }) => void;
 }
 
 export default function LoginPage({ onLogin }: Props) {
@@ -31,7 +31,7 @@ export default function LoginPage({ onLogin }: Props) {
             const trimmed = email.trim();
             const token = await login(trimmed, password);
             saveRecentEmail(trimmed);
-            onLogin(token);
+            onLogin(token, { email: trimmed, password });
         } catch (err: any) {
             setError(err.message);
         } finally {
