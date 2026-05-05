@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "antyp-hub"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "serde",
  "serde_json",
